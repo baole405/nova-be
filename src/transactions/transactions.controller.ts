@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  ParseIntPipe,
-  Query,
-  UseGuards,
-} from "@nestjs/common";
+import { Controller, Get, Param, Query, UseGuards } from "@nestjs/common";
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -30,8 +23,8 @@ export class TransactionsController {
   @ApiQuery({ name: "offset", required: false, type: Number })
   async getTransactions(
     @CurrentUser() user: User,
-    @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
-    @Query("offset", new ParseIntPipe({ optional: true })) offset?: number,
+    @Query("limit") limit?: number,
+    @Query("offset") offset?: number,
   ) {
     return this.transactionsService.getTransactions(user, limit, offset);
   }

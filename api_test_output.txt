@@ -1,0 +1,75 @@
+≡ƒÜÇ Starting API Tests with token...
+
+1∩╕ÅΓâú Testing GET /api/apartments/my
+Status: 200
+Data: {
+  "id": 1,
+  "unitNumber": "2304",
+  "floor": 23,
+  "block": "F04",
+  "areaSqm": "75.50",
+  "owner": {
+    "id": 1,
+    "fullName": "Nguyß╗àn V─ân A",
+    "email": "demo@nova.com"
+  }
+}
+
+2∩╕ÅΓâú Testing GET /api/bills
+Status: 200
+Data: {
+  "data": [
+    {
+      "id": 1,
+      "title": "Ph├¡ quß║ún l├╜ th├íng 01/2026",
+      "amount": "756000.00",
+      "period": "2026-01-01",
+      "dueDate": "2026-01-25",
+      "status": "pending",
+      "createdAt": "2026-01-23T14:52:44.602Z",
+      "paidAt": null,
+      "feeType": {
+        "id": 1,
+        "name": "Ph├¡ quß║ún l├╜"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Ph├¡ gß╗¡i xe ├┤ t├┤ T01/2026",
+      "amount": "1500000.00",
+      "period": "2026-01-01",
+      "dueDate": "2026-01-25",
+      "status": "pending",
+      "createdAt": "2026-01-23T14:52:44.602Z",
+      "paidAt": null,
+      "feeType": {
+        "id": 2,
+        "name": "Ph├¡ gß╗¡i xe ├┤ t├┤"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Ph├¡ quß║ún l├╜ th├íng 12/2025",
+      "amount": "756000.00",
+      "period": "2025-12-01",
+      "dueDate": "2025-12-25",
+      "status": "paid",
+      "createdAt": "2026-01-23T14:52:44.602Z",
+      "paidAt": "2025-12-20T00:00:00.000Z",
+      "feeType": {
+        "id": 1,
+        "name": "Ph├¡ quß║ún l├╜"
+      }
+    }
+  ],
+  "total": 3,
+  "page": 1
+}
+
+3∩╕ÅΓâú Testing GET /api/transactions
+Status: 400
+Data: {
+  "message": "Validation failed (numeric string is expected)",
+  "error": "Bad Request",
+  "statusCode": 400
+}
