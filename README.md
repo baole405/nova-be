@@ -37,11 +37,11 @@ npm run db:seed
 npm run start:dev
 ```
 
-Backend sẽ chạy tại: **http://localhost:3001**
+Backend sẽ chạy tại: **http://localhost:4000**
 
 ## 📚 Useful URLs
 
-- **API Swagger Docs**: http://localhost:3001/api/docs
+- **API Swagger Docs**: http://localhost:4000/api/docs
 - **pgAdmin** (Database UI): http://localhost:5050
   - Email: `admin@nova.com`
   - Password: `admin`
@@ -66,10 +66,10 @@ Bạn cần JWT token từ Neon Auth (frontend). Sau đó test API:
 
 ```bash
 # Get bills
-curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:3001/api/bills
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:4000/api/bills
 
 # Get apartment info
-curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:3001/api/apartments/my
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:4000/api/apartments/my
 ```
 
 ## 📝 Available Scripts
