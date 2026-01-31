@@ -1,0 +1,63 @@
+name: Deploy to VPS
+
+on:
+    push:
+        branches:
+            - main # Trigger khi push lên branch main
+    workflow_dispatch: # Cho phép manual trigger từ GitHub UI
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Deploy to VPS via SSH
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.VPS_HOST }}
+                  username: ${{ secrets.VPS_USERNAME }}
+                  key: ${{ secrets.VPS_SSH_KEY }}
+                  port: 22
+                  script: |
+                      echo "🚀 Starting deployment..."
+
+                      # Navigate to project directory
+                      cd /root/nova-be
+
+                      # Pull latest code
+                      echo "📥 Pulling latest code from GitHub..."
+                      git pull origin main
+
+                      # Load environment variables
+                      echo "🔧 Loading environment variables..."
+                      set -a
+                      source /root/.env.production
+                      set +a
+
+                      # Rebuild and restart backend container
+                      echo "🐳 Rebuilding Docker containers..."
+                      cd /root
+                      docker compose -f docker-compose.production.yml build --no-cache backend
+
+                      echo "♻️  Restarting containers..."
+                      docker compose -f docker-compose.production.yml up -d
+
+                      # Wait for backend to be healthy
+                      echo "⏳ Waiting for backend to start..."
+                      sleep 10
+
+                      # Check if backend is running
+                      if docker ps | grep -q nova-backend-prod; then
+                        echo "✅ Deployment successful!"
+                        echo "🌐 Backend is running at http://167.71.210.47:4000"
+                      else
+                        echo "❌ Deployment failed! Backend is not running."
+                        exit 1
+                      fi
+
+                      # Show logs (last 20 lines)
+                      echo "📋 Recent logs:"
+                      docker compose -f docker-compose.production.yml logs backend --tail=20
