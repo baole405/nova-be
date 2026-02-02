@@ -49,4 +49,4 @@ COPY drizzle.config.ts ./
 
 # App listens on PORT from environment variable (controlled by Doppler)
 # No EXPOSE directive as port is dynamic (8080 in production)
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main"]
