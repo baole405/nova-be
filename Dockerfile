@@ -39,6 +39,9 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy the built application
 COPY --from=build /usr/src/app/dist ./dist
 
+# Copy database schema for Drizzle runtime
+COPY --from=build /usr/src/app/src/database ./src/database
+
 # App listens on PORT from environment variable (controlled by Doppler)
 # No EXPOSE directive as port is dynamic (8080 in production)
 CMD ["node", "dist/main"]
