@@ -56,19 +56,22 @@ jobs:
 
       - name: Run Docker container
         run: |
-          docker run -d --name test-container -p 3000:3000 \
+          docker run -d --name test-container -p 4000:4000 \
             --add-host=host.docker.internal:host-gateway \
             -e DATABASE_URL="postgresql://test:test@host.docker.internal:5432/testdb" \
             -e JWT_SECRET="test-secret-key-for-ci" \
-            -e NODE_ENV="test" \
-            -e PORT="3000" \
+            -e JWT_EXPIRES_IN="7d" \
+            -e FRONTEND_URL="http://localhost:5000" \
+            -e ALLOWED_CORS_ORIGINS="http://localhost:5000" \
+            -e NODE_ENV="production" \
+            -e PORT="4000" \
             be-repo:latest
 
       - name: Wait for application to be ready
         run: |
           echo "Waiting for application to be ready..."
           for i in {1..30}; do
-            if curl -s http://localhost:3000/ > /dev/null 2>&1; then
+            if curl -s http://localhost:4000/api/docs > /dev/null 2>&1; then
               echo "✓ Application is ready after ${i} seconds"
               break
             fi
@@ -83,13 +86,14 @@ jobs:
 
       - name: Test application endpoint
         run: |
-          RESPONSE=$(curl -s http://localhost:3000/)
-          echo "Response: $RESPONSE"
-          if [ "$RESPONSE" = "Hello World!" ]; then
-            echo "✓ Test passed: Response matches 'Hello World!'"
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/api/docs)
+          echo "HTTP Status: $RESPONSE"
+          if [ "$RESPONSE" = "200" ] || [ "$RESPONSE" = "301" ]; then
+            echo "✓ Test passed: Swagger docs accessible"
             exit 0
           else
-            echo "✗ Test failed: Expected 'Hello World!' but got '$RESPONSE'"
+            echo "✗ Test failed: Got HTTP $RESPONSE"
+            docker logs test-container
             exit 1
           fi
 
