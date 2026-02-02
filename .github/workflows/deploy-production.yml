@@ -68,14 +68,43 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Copy docker-compose.production.yml to Droplet
+      - name: Create .env file from synced secrets
+        run: |
+          cat > .env.production << EOF
+          NODE_ENV=${{ secrets.NODE_ENV }}
+          PORT=${{ secrets.PORT }}
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}
+          FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+          ALLOWED_CORS_ORIGINS=${{ secrets.ALLOWED_CORS_ORIGINS }}
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}
+          DO_REGISTRY=${{ secrets.DO_REGISTRY }}
+          EOF
+
+      - name: Copy deployment files to Droplet
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DO_DROPLET_HOST }}
           username: ${{ secrets.DO_DROPLET_USERNAME }}
           key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
-          source: "docker-compose.production.yml"
+          source: "docker-compose.production.yml,.env.production"
           target: "/app/be-repo"
+
+      - name: Setup VPS workspace
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DO_DROPLET_HOST }}
+          username: ${{ secrets.DO_DROPLET_USERNAME }}
+          key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p /app/be-repo
+            cd /app/be-repo
+            # Move .env file to correct location
+            [ -f .env.production ] && mv .env.production .env || true
 
       - name: Deploy to Droplet via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -92,11 +121,11 @@ jobs:
             # Pull latest image
             docker compose -f docker-compose.production.yml pull
 
-            # Stop and remove old containers with Doppler
-            doppler run --project homix --config prd -- docker compose -f docker-compose.production.yml down
+            # Stop and remove old containers
+            docker compose -f docker-compose.production.yml down
 
-            # Start new containers with Doppler secrets injection
-            doppler run --project homix --config prd -- docker compose -f docker-compose.production.yml up -d
+            # Start new containers with secrets from .env file
+            docker compose -f docker-compose.production.yml up -d
 
             # Clean up old images
             docker image prune -af
