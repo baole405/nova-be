@@ -32,15 +32,20 @@ WORKDIR /usr/src/app
 # Install OpenSSL for Prisma
 RUN apk add --no-cache openssl
 
-# Copy package files and install production dependencies only
+# Copy package files
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+
+# Copy production node_modules from install stage
+COPY --from=install /usr/src/app/node_modules ./node_modules
 
 # Copy the built application
 COPY --from=build /usr/src/app/dist ./dist
 
 # Copy database schema for Drizzle runtime
 COPY --from=build /usr/src/app/src/database ./src/database
+
+# Copy drizzle config for migrations
+COPY drizzle.config.ts ./
 
 # App listens on PORT from environment variable (controlled by Doppler)
 # No EXPOSE directive as port is dynamic (8080 in production)
