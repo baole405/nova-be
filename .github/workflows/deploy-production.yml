@@ -7,6 +7,7 @@ on:
       - completed
     branches:
       - main
+      - feature/setup-deployment # TODO: Remove this line before merging to main
   workflow_dispatch:
 
 env:

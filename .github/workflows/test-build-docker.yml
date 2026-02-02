@@ -2,8 +2,6 @@ name: Test and Build Docker
 
 on:
   push:
-    branches:
-      - main
   pull_request:
 
 jobs:
