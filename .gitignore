@@ -43,3 +43,5 @@ lerna-debug.log*
 /drizzle
 *.db
 *.sqlite
+
+docs/*
