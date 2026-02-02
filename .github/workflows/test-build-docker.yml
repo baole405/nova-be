@@ -1,0 +1,100 @@
+name: Test and Build Docker
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  docker-build-and-test:
+    name: Build and Test Docker Image
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('dockerfile', 'package*.json') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: be-repo:latest
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Run Docker container
+        run: |
+          docker run -d --name test-container -p 3000:3000 \
+            --add-host=host.docker.internal:host-gateway \
+            -e DATABASE_URL="postgresql://test:test@host.docker.internal:5432/testdb" \
+            -e JWT_SECRET="test-secret-key-for-ci" \
+            -e NODE_ENV="test" \
+            -e PORT="3000" \
+            be-repo:latest
+
+      - name: Wait for application to be ready
+        run: |
+          echo "Waiting for application to be ready..."
+          for i in {1..30}; do
+            if curl -s http://localhost:3000/ > /dev/null 2>&1; then
+              echo "✓ Application is ready after ${i} seconds"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "✗ Application failed to start within 30 seconds"
+              echo "Container logs:"
+              docker logs test-container
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Test application endpoint
+        run: |
+          RESPONSE=$(curl -s http://localhost:3000/)
+          echo "Response: $RESPONSE"
+          if [ "$RESPONSE" = "Hello World!" ]; then
+            echo "✓ Test passed: Response matches 'Hello World!'"
+            exit 0
+          else
+            echo "✗ Test failed: Expected 'Hello World!' but got '$RESPONSE'"
+            exit 1
+          fi
+
+      - name: Stop and remove container
+        if: always()
+        run: |
+          docker stop test-container || true
+          docker rm test-container || true
