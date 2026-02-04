@@ -7,14 +7,15 @@ import { db } from "../database/database";
 import { users } from "../database/schema";
 
 interface JwtPayload {
-  sub: string; // Neon Auth user ID
+  sub: number; // User ID
+  username: string;
   email: string;
   role?: string;
 }
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private configService: ConfigService) {
+  constructor(private readonly configService: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -23,30 +24,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    const { sub: neonAuthId, email } = payload;
+    const { sub: userId } = payload;
 
-    // Find or create user in database
-    let [user] = await db
+    // Find user in database
+    const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.neonAuthId, neonAuthId));
-
-    if (!user) {
-      // First time login - create user
-      [user] = await db
-        .insert(users)
-        .values({
-          neonAuthId,
-          email,
-          role: "resident",
-        })
-        .returning();
-    }
+      .where(eq(users.id, userId))
+      .limit(1);
 
     if (!user) {
       throw new UnauthorizedException("User not found");
     }
 
-    return user;
+    // Return user without password
+    const { password: _, ...userWithoutPassword } = user;
+    return userWithoutPassword;
   }
 }

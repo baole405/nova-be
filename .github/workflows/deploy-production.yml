@@ -83,6 +83,9 @@ jobs:
           POSTGRES_DB=${{ secrets.POSTGRES_DB }}
           POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}
           DO_REGISTRY=${{ secrets.DO_REGISTRY }}
+          GOOGLE_CLIENT_ID=${{ secrets.GH_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET=${{ secrets.GH_CLIENT_SECRET }}
+          GOOGLE_CALLBACK_URL=${{ secrets.GH_CALLBACK_URL }}
           EOF
 
       - name: Copy deployment files to Droplet
