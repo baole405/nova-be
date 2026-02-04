@@ -20,8 +20,9 @@ async function seed() {
     const [user] = await db
       .insert(users)
       .values({
-        neonAuthId: "sample-neon-auth-id-123",
+        username: "demo_user",
         email: "demo@nova.com",
+        password: "hashed_password_123",
         fullName: "Nguyễn Văn A",
         phoneNumber: "0901234567",
         role: "resident",
