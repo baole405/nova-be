@@ -1,36 +1,52 @@
-# Stage 1: Build
-FROM node:20-alpine AS builder
+# Install dependencies
+FROM node:lts-alpine AS install
 
-WORKDIR /app
+# Set the working directory inside the container
+WORKDIR /usr/src/app
 
-# Copy package files
+# Copy package.json and package-lock.json to the working directory
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci
+# Install the application dependencies
+RUN npm install
 
-# Copy source code
+# Build the application
+FROM node:lts-alpine AS build
+
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
+
+WORKDIR /usr/src/app
+COPY --from=install /usr/src/app/node_modules ./node_modules
+
+# Copy the rest of the application files
 COPY . .
 
-# Build TypeScript
+# Build the NestJS application
 RUN npm run build
 
-# Stage 2: Production
-FROM node:20-alpine
+# Prepare the production image
+FROM node:lts-alpine AS production
+WORKDIR /usr/src/app
 
-WORKDIR /app
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
 
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm ci --only=production
+# Copy production node_modules from install stage
+COPY --from=install /usr/src/app/node_modules ./node_modules
 
-# Copy built files from builder
-COPY --from=builder /app/dist ./dist
+# Copy the built application
+COPY --from=build /usr/src/app/dist ./dist
 
-# Expose port
-EXPOSE 4000
+# Copy database schema for Drizzle runtime
+COPY --from=build /usr/src/app/src/database ./src/database
 
-# Start application
+# Copy drizzle config for migrations
+COPY drizzle.config.ts ./
+
+# App listens on PORT from environment variable (controlled by Doppler)
+# No EXPOSE directive as port is dynamic (8080 in production)
 CMD ["node", "dist/src/main"]
