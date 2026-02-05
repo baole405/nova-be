@@ -1,105 +1,105 @@
 import {
   Body,
   Controller,
-  Post,
   Get,
   HttpCode,
   HttpStatus,
-  UseGuards,
+  Post,
   Req,
   Res,
-} from "@nestjs/common";
-import { AuthService } from "./auth.service";
-import { LoginDto } from "./dto/login.dto";
-import { RegisterDto } from "./dto/register.dto";
-import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
-import { GoogleAuthGuard } from "./google-auth.guard";
-import { Request, Response } from "express";
+  UseGuards,
+} from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Request, Response } from 'express';
+import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { GoogleAuthGuard } from './google-auth.guard';
 
-@ApiTags("Authentication")
-@Controller("auth")
+@ApiTags('Authentication')
+@Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post("register")
-  @ApiOperation({ summary: "Register a new user" })
+  @Post('register')
+  @ApiOperation({ summary: 'Register a new user' })
   @ApiResponse({
     status: 201,
-    description: "User successfully registered",
+    description: 'User successfully registered',
     schema: {
       example: {
         user: {
           id: 1,
-          username: "john_doe",
-          email: "john.doe@example.com",
-          fullName: "John Doe",
-          phoneNumber: "+1234567890",
-          role: "resident",
-          createdAt: "2024-01-01T00:00:00.000Z",
+          username: 'john_doe',
+          email: 'john.doe@example.com',
+          fullName: 'John Doe',
+          phoneNumber: '+1234567890',
+          role: 'resident',
+          createdAt: '2024-01-01T00:00:00.000Z',
         },
-        access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
       },
     },
   })
-  @ApiResponse({ status: 409, description: "Username or email already exists" })
+  @ApiResponse({ status: 409, description: 'Username or email already exists' })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
-  @Post("login")
+  @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Login with username/email and password" })
+  @ApiOperation({ summary: 'Login with username/email and password' })
   @ApiResponse({
     status: 200,
-    description: "User successfully logged in",
+    description: 'User successfully logged in',
     schema: {
       example: {
         user: {
           id: 1,
-          username: "john_doe",
-          email: "john.doe@example.com",
-          fullName: "John Doe",
-          phoneNumber: "+1234567890",
-          role: "resident",
-          createdAt: "2024-01-01T00:00:00.000Z",
+          username: 'john_doe',
+          email: 'john.doe@example.com',
+          fullName: 'John Doe',
+          phoneNumber: '+1234567890',
+          role: 'resident',
+          createdAt: '2024-01-01T00:00:00.000Z',
         },
-        access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
       },
     },
   })
-  @ApiResponse({ status: 401, description: "Invalid credentials" })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 
-  @Get("google")
+  @Get('google')
   @UseGuards(GoogleAuthGuard)
-  @ApiOperation({ summary: "Initiate Google OAuth login" })
+  @ApiOperation({ summary: 'Initiate Google OAuth login' })
   @ApiResponse({
     status: 302,
-    description: "Redirects to Google OAuth consent screen",
+    description: 'Redirects to Google OAuth consent screen',
   })
   async googleAuth() {
     // Guard redirects to Google
   }
 
-  @Get("google/callback")
+  @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
-  @ApiOperation({ summary: "Google OAuth callback" })
+  @ApiOperation({ summary: 'Google OAuth callback' })
   @ApiResponse({
     status: 200,
-    description: "User successfully authenticated with Google",
+    description: 'User successfully authenticated with Google',
     schema: {
       example: {
         user: {
           id: 1,
-          username: "john_doe",
-          email: "john.doe@example.com",
-          fullName: "John Doe",
-          role: "resident",
-          createdAt: "2024-01-01T00:00:00.000Z",
+          username: 'john_doe',
+          email: 'john.doe@example.com',
+          fullName: 'John Doe',
+          role: 'resident',
+          createdAt: '2024-01-01T00:00:00.000Z',
         },
-        access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
       },
     },
   })
@@ -115,9 +115,11 @@ export class AuthController {
 
     // You can redirect to frontend with token or return JSON
     // Option 1: Redirect to frontend with token in query params
-    // return res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${result.access_token}`);
+    return res.redirect(
+      `${process.env.FRONTEND_URL}/auth/callback?token=${result.access_token}`,
+    );
 
     // Option 2: Return JSON response
-    return res.json(result);
+    // return res.json(result);
   }
 }
