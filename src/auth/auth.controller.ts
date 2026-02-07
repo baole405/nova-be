@@ -15,6 +15,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { GoogleAuthGuard } from './google-auth.guard';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -81,6 +82,17 @@ export class AuthController {
   })
   async googleAuth() {
     // Guard redirects to Google
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({
+    status: 200,
+    description: 'User profile retrieved successfully',
+  })
+  async getProfile(@Req() req) {
+    return req.user;
   }
 
   @Get('google/callback')
