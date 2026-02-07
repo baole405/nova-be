@@ -34,7 +34,11 @@ export class BookingsService {
       .insert(bookings)
       .values({
         userId,
-        ...createBookingDto,
+        serviceType: createBookingDto.serviceType,
+        date: createBookingDto.date,
+        startTime: createBookingDto.startTime,
+        endTime: createBookingDto.endTime,
+        notes: createBookingDto.notes,
         status: 'confirmed', // Auto-confirm for now
       })
       .returning();
@@ -45,7 +49,7 @@ export class BookingsService {
   async findAllByUser(userId: number) {
     return db.query.bookings.findMany({
       where: eq(bookings.userId, userId),
-      orderBy: (bookings, { desc }) => [desc(bookings.createdAt)],
+      orderBy: (schema, { desc }) => [desc(schema.createdAt)],
     });
   }
 }

@@ -1,10 +1,11 @@
-import { Module } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
-import { ApartmentsModule } from "./apartments/apartments.module";
-import { AuthModule } from "./auth/auth.module";
-import { BillsModule } from "./bills/bills.module";
-import { NotificationsModule } from "./notifications/notifications.module";
-import { TransactionsModule } from "./transactions/transactions.module";
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { ApartmentsModule } from './apartments/apartments.module';
+import { AuthModule } from './auth/auth.module';
+import { BillsModule } from './bills/bills.module';
+import { BookingsModule } from './bookings/bookings.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { TransactionsModule } from './transactions/transactions.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { TransactionsModule } from "./transactions/transactions.module";
     TransactionsModule,
     ApartmentsModule,
     NotificationsModule,
+    BookingsModule,
   ],
 })
 export class AppModule {}
