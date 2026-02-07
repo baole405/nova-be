@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -91,7 +91,7 @@ export class AuthController {
     status: 200,
     description: 'User profile retrieved successfully',
   })
-  async getProfile(@Req() req) {
+  async getProfile(@Req() req: any) {
     return req.user;
   }
 
@@ -115,8 +115,8 @@ export class AuthController {
       },
     },
   })
-  async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
-    const googleUser = req.user as any;
+  async googleAuthCallback(@Req() req: any, @Res() res: Response) {
+    const googleUser = req.user;
 
     const result = await this.authService.googleLogin({
       googleId: googleUser.googleId,
