@@ -16,7 +16,9 @@ export const bookings = pgTable('bookings', {
     .references(() => users.id)
     .notNull(),
   serviceType: varchar('service_type', { length: 50 }).notNull(), // 'parking', 'bbq'
+  slotNumber: varchar('slot_number', { length: 20 }), // e.g., 'A1', 'B2'
   date: date('date').notNull(),
+  endDate: date('end_date'), // For monthly parking
   startTime: time('start_time').notNull(),
   endTime: time('end_time').notNull(),
   status: varchar('status', { length: 20 }).default('pending').notNull(), // 'pending', 'confirmed', 'cancelled', 'rejected'

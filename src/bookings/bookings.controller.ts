@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { BookingsService } from './bookings.service';
@@ -21,5 +29,14 @@ export class BookingsController {
   @ApiOperation({ summary: "Get current user's bookings" })
   findAllMyBookings(@Req() req: any) {
     return this.bookingsService.findAllByUser(req.user.id);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get all bookings by date and service type' })
+  findAll(
+    @Query('date') date: string,
+    @Query('serviceType') serviceType: string,
+  ) {
+    return this.bookingsService.findAll(date, serviceType);
   }
 }
