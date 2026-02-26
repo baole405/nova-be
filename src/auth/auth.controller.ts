@@ -125,13 +125,12 @@ export class AuthController {
       picture: googleUser.picture,
     });
 
-    // You can redirect to frontend with token or return JSON
-    // Option 1: Redirect to frontend with token in query params
-    return res.redirect(
-      `${process.env.FRONTEND_URL}/auth/callback?token=${result.access_token}`,
-    );
+    const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5000')
+      .split(',')[0]
+      .trim();
 
-    // Option 2: Return JSON response
-    // return res.json(result);
+    return res.redirect(
+      `${frontendUrl}/auth/callback?token=${result.access_token}`,
+    );
   }
 }
