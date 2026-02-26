@@ -10,13 +10,13 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // CORS configuration
+  const frontendUrls = (process.env.FRONTEND_URL || '')
+    .split(',')
+    .map((url) => url.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: [
-      'http://localhost:5000',
-      'https://homix.vercel.app',
-      'http://167.71.210.47:3000',
-      process.env.FRONTEND_URL || '',
-    ],
+    origin: [...new Set(['http://localhost:5000', ...frontendUrls])],
     credentials: true,
   });
 
