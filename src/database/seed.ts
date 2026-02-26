@@ -1,28 +1,62 @@
 import { config } from "dotenv";
 config();
 
+import * as bcrypt from "bcrypt";
+import { sql } from "drizzle-orm";
 import { db } from "./database";
 import {
+  announcements,
   apartments,
   bills,
+  bookings,
+  facilities,
   feeTypes,
+  maintenanceRequests,
   notifications,
   transactions,
   users,
+  visitors,
 } from "./schema";
+
+async function cleanup() {
+  console.log("🧹 Cleaning up existing data...");
+  // Delete in FK-safe order (children first)
+  await db.delete(transactions);
+  await db.delete(notifications);
+  await db.delete(bills);
+  await db.delete(maintenanceRequests);
+  await db.delete(bookings);
+  await db.delete(announcements);
+  await db.delete(visitors);
+  await db.delete(apartments);
+  await db.delete(feeTypes);
+  await db.delete(facilities);
+  await db.delete(users);
+  // Reset auto-increment sequences
+  await db.execute(sql`ALTER SEQUENCE users_id_seq RESTART WITH 1`);
+  await db.execute(sql`ALTER SEQUENCE apartments_id_seq RESTART WITH 1`);
+  await db.execute(sql`ALTER SEQUENCE fee_types_id_seq RESTART WITH 1`);
+  await db.execute(sql`ALTER SEQUENCE bills_id_seq RESTART WITH 1`);
+  await db.execute(sql`ALTER SEQUENCE transactions_id_seq RESTART WITH 1`);
+  await db.execute(sql`ALTER SEQUENCE notifications_id_seq RESTART WITH 1`);
+  console.log("✅ Cleanup complete");
+}
 
 async function seed() {
   console.log("🌱 Seeding database...");
 
   try {
+    await cleanup();
+
     // 1. Create sample user
     console.log("Creating sample user...");
+    const hashedPassword = await bcrypt.hash("demo123456", 10);
     const [user] = await db
       .insert(users)
       .values({
         username: "demo_user",
         email: "demo@nova.com",
-        password: "hashed_password_123",
+        password: hashedPassword,
         fullName: "Nguyễn Văn A",
         phoneNumber: "0901234567",
         role: "resident",
