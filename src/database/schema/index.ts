@@ -1,6 +1,7 @@
 // Export all schemas
 export * from "./announcements.schema";
 export * from "./apartments.schema";
+export * from "./bill-items.schema";
 export * from "./bills.schema";
 export * from "./bookings.schema";
 export * from "./facilities.schema";
