@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { and, eq, gte, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "../database/database";
 import {
   apartments,
@@ -35,6 +35,13 @@ export class BillsService {
       conditions.push(eq(bills.status, query.status));
     }
 
+    if (query.dueDateFrom) {
+      conditions.push(gte(bills.dueDate, query.dueDateFrom));
+    }
+    if (query.dueDateTo) {
+      conditions.push(lte(bills.dueDate, query.dueDateTo));
+    }
+
     // Get bills with fee type info
     const billsData = await db
       .select({
@@ -56,7 +63,15 @@ export class BillsService {
       .where(and(...conditions))
       .limit(query.limit!)
       .offset(query.offset!)
-      .orderBy(sql`${bills.dueDate} DESC`);
+      .orderBy(
+        (query.sortOrder === "asc" ? asc : desc)(
+          query.sortBy === "amount"
+            ? bills.amount
+            : query.sortBy === "createdAt"
+              ? bills.createdAt
+              : bills.dueDate,
+        ),
+      );
 
     // Get total count
     const [{ count }] = await db
