@@ -7,6 +7,7 @@ import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "../database/database";
 import {
   apartments,
+  billItems,
   bills,
   feeTypes,
   transactions,
@@ -18,7 +19,6 @@ import { MarkPaidDto } from "./dto/mark-paid.dto";
 @Injectable()
 export class BillsService {
   async getBills(user: User, query: GetBillsDto) {
-    // Get user's apartment
     const [apartment] = await db
       .select()
       .from(apartments)
@@ -28,7 +28,6 @@ export class BillsService {
       return { data: [], total: 0, page: 1 };
     }
 
-    // Build query conditions
     const conditions = [eq(bills.apartmentId, apartment.id)];
 
     if (query.status && query.status !== "all") {
@@ -42,7 +41,6 @@ export class BillsService {
       conditions.push(lte(bills.dueDate, query.dueDateTo));
     }
 
-    // Get bills with fee type info
     const billsData = await db
       .select({
         id: bills.id,
@@ -53,13 +51,8 @@ export class BillsService {
         status: bills.status,
         createdAt: bills.createdAt,
         paidAt: bills.paidAt,
-        feeType: {
-          id: feeTypes.id,
-          name: feeTypes.name,
-        },
       })
       .from(bills)
-      .leftJoin(feeTypes, eq(bills.feeTypeId, feeTypes.id))
       .where(and(...conditions))
       .limit(query.limit!)
       .offset(query.offset!)
@@ -73,7 +66,6 @@ export class BillsService {
         ),
       );
 
-    // Get total count
     const [{ count }] = await db
       .select({ count: sql<number>`count(*)` })
       .from(bills)
@@ -87,7 +79,6 @@ export class BillsService {
   }
 
   async getBillById(user: User, billId: number) {
-    // Get user's apartment
     const [apartment] = await db
       .select()
       .from(apartments)
@@ -97,7 +88,6 @@ export class BillsService {
       throw new NotFoundException("Apartment not found");
     }
 
-    // Get bill with relations
     const [bill] = await db
       .select({
         id: bills.id,
@@ -108,11 +98,6 @@ export class BillsService {
         status: bills.status,
         createdAt: bills.createdAt,
         paidAt: bills.paidAt,
-        feeType: {
-          id: feeTypes.id,
-          name: feeTypes.name,
-          description: feeTypes.description,
-        },
         apartment: {
           unitNumber: apartments.unitNumber,
           floor: apartments.floorNumber,
@@ -120,7 +105,6 @@ export class BillsService {
         },
       })
       .from(bills)
-      .leftJoin(feeTypes, eq(bills.feeTypeId, feeTypes.id))
       .leftJoin(apartments, eq(bills.apartmentId, apartments.id))
       .where(eq(bills.id, billId));
 
@@ -128,12 +112,30 @@ export class BillsService {
       throw new NotFoundException("Bill not found");
     }
 
-    // Authorization check
     if (!bill.apartment || bill.apartment.unitNumber !== apartment.unitNumber) {
       throw new ForbiddenException("You can only view your own bills");
     }
 
-    return bill;
+    // Fetch bill items with fee type info
+    const items = await db
+      .select({
+        id: billItems.id,
+        title: billItems.title,
+        usage: billItems.usage,
+        unitPrice: billItems.unitPrice,
+        measureUnit: billItems.measureUnit,
+        amount: billItems.amount,
+        feeType: {
+          id: feeTypes.id,
+          name: feeTypes.name,
+        },
+      })
+      .from(billItems)
+      .leftJoin(feeTypes, eq(billItems.feeTypeId, feeTypes.id))
+      .where(eq(billItems.billId, billId))
+      .orderBy(billItems.id);
+
+    return { ...bill, items };
   }
 
   async getUpcomingBills(user: User) {
@@ -157,13 +159,8 @@ export class BillsService {
         amount: bills.amount,
         dueDate: bills.dueDate,
         status: bills.status,
-        feeType: {
-          id: feeTypes.id,
-          name: feeTypes.name,
-        },
       })
       .from(bills)
-      .leftJoin(feeTypes, eq(bills.feeTypeId, feeTypes.id))
       .where(
         and(
           eq(bills.apartmentId, apartment.id),
@@ -178,14 +175,12 @@ export class BillsService {
   }
 
   async markAsPaid(user: User, billId: number, dto: MarkPaidDto) {
-    // Get bill and verify ownership
     const bill = await this.getBillById(user, billId);
 
     if (bill.status === "paid") {
       throw new ForbiddenException("Bill is already paid");
     }
 
-    // Update bill status
     const [updatedBill] = await db
       .update(bills)
       .set({
@@ -195,7 +190,6 @@ export class BillsService {
       .where(eq(bills.id, billId))
       .returning();
 
-    // Create transaction record
     const [transaction] = await db
       .insert(transactions)
       .values({
