@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { BillsModule } from './bills/bills.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { PaymentsModule } from './payments/payments.module';
 import { TransactionsModule } from './transactions/transactions.module';
 
 @Module({
@@ -17,6 +18,7 @@ import { TransactionsModule } from './transactions/transactions.module';
     TransactionsModule,
     ApartmentsModule,
     NotificationsModule,
+    PaymentsModule,
     BookingsModule,
   ],
 })
