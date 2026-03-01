@@ -22,6 +22,7 @@ export const bills = pgTable(
     status: varchar("status", { length: 50 }).default("pending"),
     createdAt: timestamp("created_at").defaultNow(),
     paidAt: timestamp("paid_at"),
+    orderCode: integer("order_code").unique(),
   },
   (table) => ({
     apartmentStatusIdx: index("idx_apartment_status").on(
