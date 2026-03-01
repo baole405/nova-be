@@ -7,7 +7,6 @@ on:
       - completed
     branches:
       - main
-      - feature/setup-deployment # TODO: Remove this line before merging to main
   workflow_dispatch:
 
 env:
@@ -68,25 +67,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Create .env file from synced secrets
+      - name: Create .env file from secrets
         run: |
-          cat > .env.production << EOF
-          NODE_ENV=${{ secrets.NODE_ENV }}
-          PORT=${{ secrets.PORT }}
-          DATABASE_URL=${{ secrets.DATABASE_URL }}
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}
-          FRONTEND_URL=${{ secrets.FRONTEND_URL }}
-          ALLOWED_CORS_ORIGINS=${{ secrets.ALLOWED_CORS_ORIGINS }}
-          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-          POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}
-          DO_REGISTRY=${{ secrets.DO_REGISTRY }}
-          GOOGLE_CLIENT_ID=${{ secrets.GH_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET=${{ secrets.GH_CLIENT_SECRET }}
-          GOOGLE_CALLBACK_URL=${{ secrets.GH_CALLBACK_URL }}
-          EOF
+          # Dynamically generate .env from all secrets, excluding infra-only ones
+          EXCLUDE="DO_ACCESS_TOKEN|DO_SSH_PRIVATE_KEY|DO_DROPLET_HOST|DO_DROPLET_USERNAME|DO_REGISTRY_NAME|GITHUB_TOKEN"
+          echo '${{ toJSON(secrets) }}' | jq -r --arg ex "$EXCLUDE" '
+            to_entries[]
+            | select(.key | test($ex) | not)
+            | "\(.key)=\(.value)"
+          ' > .env.production
+
+          # Fix naming mismatches: GH_CLIENT_* → GOOGLE_CLIENT_*
+          sed -i 's/^GH_CLIENT_ID=/GOOGLE_CLIENT_ID=/' .env.production
+          sed -i 's/^GH_CLIENT_SECRET=/GOOGLE_CLIENT_SECRET=/' .env.production
+          sed -i 's/^GH_CALLBACK_URL=/GOOGLE_CALLBACK_URL=/' .env.production
+
+      - name: Validate required env vars
+        run: |
+          REQUIRED="DATABASE_URL JWT_SECRET FRONTEND_URL GOOGLE_CLIENT_ID"
+          MISSING=""
+          for var in $REQUIRED; do
+            grep -q "^${var}=" .env.production || MISSING="$MISSING $var"
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing required env vars:$MISSING"
+            exit 1
+          fi
 
       - name: Copy deployment files to Droplet
         uses: appleboy/scp-action@v0.1.7

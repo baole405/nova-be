@@ -29,17 +29,10 @@ services:
     image: ${DO_REGISTRY}/be-repo:latest
     container_name: nova-api
     restart: unless-stopped
+    env_file: .env
     environment:
-      NODE_ENV: ${NODE_ENV}
-      PORT: ${PORT}
+      # Override: use internal Docker network hostname instead of external DB URL
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
-      FRONTEND_URL: ${FRONTEND_URL}
-      ALLOWED_CORS_ORIGINS: ${ALLOWED_CORS_ORIGINS}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL}
     ports:
       - "${PORT}:${PORT}"
     depends_on:
