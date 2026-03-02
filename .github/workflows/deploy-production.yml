@@ -70,17 +70,20 @@ jobs:
       - name: Create .env file from secrets
         run: |
           # Dynamically generate .env from all secrets, excluding infra-only ones
-          EXCLUDE="DO_ACCESS_TOKEN|DO_SSH_PRIVATE_KEY|DO_DROPLET_HOST|DO_DROPLET_USERNAME|DO_REGISTRY_NAME|GITHUB_TOKEN"
+          EXCLUDE="DO_ACCESS_TOKEN|DO_SSH_PRIVATE_KEY|DO_DROPLET_HOST|DO_DROPLET_USERNAME|DO_REGISTRY_NAME|DO_REGISTRY|GITHUB_TOKEN"
           echo '${{ toJSON(secrets) }}' | jq -r --arg ex "$EXCLUDE" '
             to_entries[]
             | select(.key | test($ex) | not)
-            | "\(.key)=\(.value)"
+            | "\(.key)=\"\(.value)\""
           ' > .env.production
 
+          # DO_REGISTRY is needed by docker-compose.production.yml for image name
+          echo 'DO_REGISTRY="${{ secrets.DO_REGISTRY }}"' >> .env.production
+
           # Fix naming mismatches: GH_CLIENT_* → GOOGLE_CLIENT_*
-          sed -i 's/^GH_CLIENT_ID=/GOOGLE_CLIENT_ID=/' .env.production
-          sed -i 's/^GH_CLIENT_SECRET=/GOOGLE_CLIENT_SECRET=/' .env.production
-          sed -i 's/^GH_CALLBACK_URL=/GOOGLE_CALLBACK_URL=/' .env.production
+          sed -i 's/^GH_CLIENT_ID="/GOOGLE_CLIENT_ID="/' .env.production
+          sed -i 's/^GH_CLIENT_SECRET="/GOOGLE_CLIENT_SECRET="/' .env.production
+          sed -i 's/^GH_CALLBACK_URL="/GOOGLE_CALLBACK_URL="/' .env.production
 
       - name: Validate required env vars
         run: |
