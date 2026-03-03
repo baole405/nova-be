@@ -45,3 +45,6 @@ lerna-debug.log*
 *.sqlite
 
 docs/*
+
+# Claude Code instructions
+CLAUDE.md
