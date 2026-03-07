@@ -15,6 +15,7 @@ export const apartments = pgTable("apartments", {
   blockName: varchar("block_name", { length: 50 }),
   ownerId: integer("owner_id").references(() => users.id),
   areaSqm: decimal("area_sqm", { precision: 10, scale: 2 }),
+  status: varchar("status", { length: 20 }).default("occupied").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
