@@ -7,6 +7,7 @@ import { BookingsModule } from './bookings/bookings.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PaymentsModule } from './payments/payments.module';
 import { StatsModule } from './stats/stats.module';
+import { FeeTypesModule } from './fee-types/fee-types.module';
 import { TransactionsModule } from './transactions/transactions.module';
 
 @Module({
@@ -22,6 +23,7 @@ import { TransactionsModule } from './transactions/transactions.module';
     PaymentsModule,
     StatsModule,
     BookingsModule,
+    FeeTypesModule,
   ],
 })
 export class AppModule {}
