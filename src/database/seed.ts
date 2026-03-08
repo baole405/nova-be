@@ -6,6 +6,7 @@ import { sql } from "drizzle-orm";
 import { db } from "./database";
 import {
   announcements,
+  apartmentFeeConfigs,
   apartments,
   billItems,
   bills,
@@ -29,6 +30,7 @@ async function cleanup() {
   await db.delete(maintenanceRequests);
   await db.delete(bookings);
   await db.delete(announcements);
+  await db.delete(apartmentFeeConfigs);
   await db.delete(visitors);
   await db.delete(apartments);
   await db.delete(feeTypes);
@@ -37,6 +39,7 @@ async function cleanup() {
   // Reset auto-increment sequences
   await db.execute(sql`ALTER SEQUENCE users_id_seq RESTART WITH 1`);
   await db.execute(sql`ALTER SEQUENCE apartments_id_seq RESTART WITH 1`);
+  await db.execute(sql`ALTER SEQUENCE apartment_fee_configs_id_seq RESTART WITH 1`);
   await db.execute(sql`ALTER SEQUENCE fee_types_id_seq RESTART WITH 1`);
   await db.execute(sql`ALTER SEQUENCE bills_id_seq RESTART WITH 1`);
   await db.execute(sql`ALTER SEQUENCE bill_items_id_seq RESTART WITH 1`);
@@ -99,6 +102,31 @@ async function seed() {
       ])
       .returning();
     console.log(`✅ Created ${aptsData.length} apartments`);
+
+    // ── 3b. Apartment Fee Configs ──────────────────────────
+    console.log("Creating apartment fee configs...");
+    const aptFeeConfigDefs: { aptIdx: number; configs: { ftIdx: number; qty: number }[] }[] = [
+      // Apt 2304: management + 1 car + water
+      { aptIdx: 0, configs: [{ ftIdx: 0, qty: 1 }, { ftIdx: 1, qty: 1 }, { ftIdx: 3, qty: 1 }] },
+      // Apt 1205: management + 1 motorbike + water + internet
+      { aptIdx: 1, configs: [{ ftIdx: 0, qty: 1 }, { ftIdx: 2, qty: 1 }, { ftIdx: 3, qty: 1 }, { ftIdx: 4, qty: 1 }] },
+      // Apt 0801: management + 1 car + water + internet
+      { aptIdx: 2, configs: [{ ftIdx: 0, qty: 1 }, { ftIdx: 1, qty: 1 }, { ftIdx: 3, qty: 1 }, { ftIdx: 4, qty: 1 }] },
+      // Apt 1510: management + 2 motorbikes + water
+      { aptIdx: 3, configs: [{ ftIdx: 0, qty: 1 }, { ftIdx: 2, qty: 2 }, { ftIdx: 3, qty: 1 }] },
+      // Apt 2001: management + 1 car + 1 motorbike + water + internet
+      { aptIdx: 4, configs: [{ ftIdx: 0, qty: 1 }, { ftIdx: 1, qty: 1 }, { ftIdx: 2, qty: 1 }, { ftIdx: 3, qty: 1 }, { ftIdx: 4, qty: 1 }] },
+    ];
+
+    const configValues = aptFeeConfigDefs.flatMap((def) =>
+      def.configs.map((c) => ({
+        apartmentId: aptsData[def.aptIdx].id,
+        feeTypeId: feeTypeData[c.ftIdx].id,
+        quantity: c.qty,
+      })),
+    );
+    await db.insert(apartmentFeeConfigs).values(configValues);
+    console.log(`✅ Created ${configValues.length} apartment fee configs`);
 
     // ── 4. Bills & Bill Items (6 months x 5 apartments) ──
     console.log("Creating bills and bill items...");
@@ -459,6 +487,7 @@ async function seed() {
     console.log(`   👤 ${usersData.length} users (5 residents + 1 manager)`);
     console.log(`   🏠 ${aptsData.length} apartments (blocks S1, S2)`);
     console.log(`   💰 ${feeTypeData.length} fee types`);
+    console.log(`   🔗 ${configValues.length} apartment fee configs`);
     console.log(`   📄 ${billCount} bills, ${itemCount} bill items`);
     console.log(`   💳 ${txnCount} transactions`);
     console.log(`   🔔 ${notifValues.length} notifications`);
