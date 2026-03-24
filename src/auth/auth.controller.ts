@@ -91,8 +91,8 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get current user profile' })
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user profile' })
   @ApiResponse({
     status: 200,
     description: 'User profile retrieved successfully',
