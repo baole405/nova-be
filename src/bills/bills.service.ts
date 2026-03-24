@@ -1,23 +1,104 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
-} from "@nestjs/common";
-import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
-import { db } from "../database/database";
+} from '@nestjs/common';
+import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { db } from '../database/database';
 import {
   apartments,
   billItems,
   bills,
   feeTypes,
+  notifications,
   transactions,
   User,
-} from "../database/schema";
-import { GetBillsDto } from "./dto/get-bills.dto";
-import { MarkPaidDto } from "./dto/mark-paid.dto";
+} from '../database/schema';
+import { CreateBillDto } from './dto/create-bill.dto';
+import { GetBillsDto } from './dto/get-bills.dto';
+import { MarkPaidDto } from './dto/mark-paid.dto';
 
 @Injectable()
 export class BillsService {
+  async createBill(user: User, dto: CreateBillDto) {
+    if (user.role !== 'manager') {
+      throw new ForbiddenException('Only managers can create bills');
+    }
+
+    const [apartment] = await db
+      .select()
+      .from(apartments)
+      .where(eq(apartments.id, dto.apartmentId));
+
+    if (!apartment) {
+      throw new NotFoundException('Apartment not found');
+    }
+
+    const computedAmount =
+      dto.items?.reduce((sum, item) => sum + Number(item.amount), 0) ?? 0;
+
+    const finalAmount =
+      dto.amount != null ? Number(dto.amount) : Number(computedAmount);
+
+    if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
+      throw new BadRequestException(
+        'Bill amount must be greater than 0 (from amount or item totals)',
+      );
+    }
+
+    const [createdBill] = await db
+      .insert(bills)
+      .values({
+        apartmentId: dto.apartmentId,
+        title: dto.title,
+        amount: String(finalAmount),
+        period: dto.period,
+        dueDate: dto.dueDate,
+        status: dto.status ?? 'pending',
+      })
+      .returning();
+
+    if (dto.items?.length) {
+      await db.insert(billItems).values(
+        dto.items.map((item) => ({
+          billId: createdBill.id,
+          feeTypeId: item.feeTypeId,
+          title: item.title,
+          usage: item.usage != null ? String(item.usage) : null,
+          unitPrice: item.unitPrice != null ? String(item.unitPrice) : null,
+          measureUnit: item.measureUnit,
+          amount: String(item.amount),
+        })),
+      );
+    }
+
+    if (apartment.ownerId) {
+      await db.insert(notifications).values({
+        userId: apartment.ownerId,
+        title: 'Hóa đơn mới',
+        content: `Hóa đơn "${createdBill.title}" kỳ ${createdBill.period} đã được tạo.`,
+        type: 'bill',
+        isRead: false,
+        relatedBillId: createdBill.id,
+      });
+    }
+
+    return {
+      message: 'Bill created successfully',
+      bill: {
+        id: createdBill.id,
+        apartmentId: createdBill.apartmentId,
+        title: createdBill.title,
+        amount: createdBill.amount,
+        period: createdBill.period,
+        dueDate: createdBill.dueDate,
+        status: createdBill.status,
+      },
+      itemsCount: dto.items?.length ?? 0,
+    };
+  }
+
   async getBills(user: User, query: GetBillsDto) {
     const [apartment] = await db
       .select()
@@ -30,7 +111,7 @@ export class BillsService {
 
     const conditions = [eq(bills.apartmentId, apartment.id)];
 
-    if (query.status && query.status !== "all") {
+    if (query.status && query.status !== 'all') {
       conditions.push(eq(bills.status, query.status));
     }
 
@@ -57,10 +138,10 @@ export class BillsService {
       .limit(query.limit!)
       .offset(query.offset!)
       .orderBy(
-        (query.sortOrder === "asc" ? asc : desc)(
-          query.sortBy === "amount"
+        (query.sortOrder === 'asc' ? asc : desc)(
+          query.sortBy === 'amount'
             ? bills.amount
-            : query.sortBy === "createdAt"
+            : query.sortBy === 'createdAt'
               ? bills.createdAt
               : bills.dueDate,
         ),
@@ -85,7 +166,7 @@ export class BillsService {
       .where(eq(apartments.ownerId, user.id));
 
     if (!apartment) {
-      throw new NotFoundException("Apartment not found");
+      throw new NotFoundException('Apartment not found');
     }
 
     const [bill] = await db
@@ -109,11 +190,11 @@ export class BillsService {
       .where(eq(bills.id, billId));
 
     if (!bill) {
-      throw new NotFoundException("Bill not found");
+      throw new NotFoundException('Bill not found');
     }
 
     if (!bill.apartment || bill.apartment.unitNumber !== apartment.unitNumber) {
-      throw new ForbiddenException("You can only view your own bills");
+      throw new ForbiddenException('You can only view your own bills');
     }
 
     // Fetch bill items with fee type info
@@ -164,9 +245,9 @@ export class BillsService {
       .where(
         and(
           eq(bills.apartmentId, apartment.id),
-          eq(bills.status, "pending"),
-          gte(bills.dueDate, today.toISOString().split("T")[0]),
-          lte(bills.dueDate, sevenDaysLater.toISOString().split("T")[0]),
+          eq(bills.status, 'pending'),
+          gte(bills.dueDate, today.toISOString().split('T')[0]),
+          lte(bills.dueDate, sevenDaysLater.toISOString().split('T')[0]),
         ),
       )
       .orderBy(bills.dueDate);
@@ -175,16 +256,26 @@ export class BillsService {
   }
 
   async markAsPaid(user: User, billId: number, dto: MarkPaidDto) {
-    const bill = await this.getBillById(user, billId);
+    if (user.role !== 'manager') {
+      throw new ForbiddenException(
+        'Manual mark-paid is manager-only. Residents must pay via PayOS.',
+      );
+    }
 
-    if (bill.status === "paid") {
-      throw new ForbiddenException("Bill is already paid");
+    const [bill] = await db.select().from(bills).where(eq(bills.id, billId));
+
+    if (!bill) {
+      throw new NotFoundException('Bill not found');
+    }
+
+    if (bill.status === 'paid') {
+      throw new ForbiddenException('Bill is already paid');
     }
 
     const [updatedBill] = await db
       .update(bills)
       .set({
-        status: "paid",
+        status: 'paid',
         paidAt: new Date(),
       })
       .where(eq(bills.id, billId))
@@ -203,8 +294,24 @@ export class BillsService {
       })
       .returning();
 
+    const [apartment] = await db
+      .select({ ownerId: apartments.ownerId })
+      .from(apartments)
+      .where(eq(apartments.id, updatedBill.apartmentId!));
+
+    if (apartment?.ownerId) {
+      await db.insert(notifications).values({
+        userId: apartment.ownerId,
+        title: 'Hóa đơn đã thanh toán',
+        content: `Hóa đơn "${updatedBill.title}" đã được xác nhận thanh toán bởi ban quản lý.`,
+        type: 'payment',
+        isRead: false,
+        relatedBillId: updatedBill.id,
+      });
+    }
+
     return {
-      message: "Bill marked as paid",
+      message: 'Bill marked as paid',
       bill: {
         id: updatedBill.id,
         status: updatedBill.status,
@@ -215,6 +322,63 @@ export class BillsService {
         amount: transaction.paidAmount,
         method: transaction.paymentMethod,
       },
+    };
+  }
+
+  async getPaymentStatus(user: User, billId: number) {
+    const [apartment] = await db
+      .select()
+      .from(apartments)
+      .where(eq(apartments.ownerId, user.id));
+
+    if (!apartment) {
+      throw new NotFoundException('Apartment not found');
+    }
+
+    const [bill] = await db
+      .select({
+        id: bills.id,
+        status: bills.status,
+        paidAt: bills.paidAt,
+        amount: bills.amount,
+      })
+      .from(bills)
+      .where(eq(bills.id, billId));
+
+    if (!bill) {
+      throw new NotFoundException('Bill not found');
+    }
+
+    const [ownerBill] = await db
+      .select({ id: bills.id })
+      .from(bills)
+      .where(and(eq(bills.id, billId), eq(bills.apartmentId, apartment.id)));
+
+    if (!ownerBill) {
+      throw new ForbiddenException(
+        'You can only view payment status of your own bills',
+      );
+    }
+
+    const [transaction] = await db
+      .select({
+        transactionRef: transactions.transactionRef,
+        paymentDate: transactions.paymentDate,
+        amount: transactions.paidAmount,
+      })
+      .from(transactions)
+      .where(eq(transactions.billId, billId))
+      .orderBy(desc(transactions.paymentDate))
+      .limit(1);
+
+    return {
+      billId: bill.id,
+      status: bill.status,
+      paidAt: bill.paidAt,
+      amount: bill.amount,
+      transactionRef: transaction?.transactionRef ?? null,
+      paymentDate: transaction?.paymentDate ?? null,
+      paidAmount: transaction?.amount ?? null,
     };
   }
 }

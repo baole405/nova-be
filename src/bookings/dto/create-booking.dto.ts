@@ -10,6 +10,7 @@ import {
 export enum ServiceType {
   PARKING = 'parking',
   BBQ = 'bbq',
+  SWIMMING_POOL = 'swimming_pool',
 }
 
 export class CreateBookingDto {
