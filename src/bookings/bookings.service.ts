@@ -1,8 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../database/database';
-import { bookings } from '../database/schema';
+import { apartments, bookings, users } from '../database/schema';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import { UpdateBookingDto } from './dto/update-booking.dto';
 
 @Injectable()
 export class BookingsService {
@@ -89,5 +90,118 @@ export class BookingsService {
       const bEnd = new Date(booking.endDate || booking.date);
       return targetDate >= bStart && targetDate <= bEnd;
     });
+  }
+
+  async findAllForManager() {
+    const rows = await db
+      .select({
+        id: bookings.id,
+        serviceType: bookings.serviceType,
+        slotNumber: bookings.slotNumber,
+        date: bookings.date,
+        endDate: bookings.endDate,
+        startTime: bookings.startTime,
+        endTime: bookings.endTime,
+        status: bookings.status,
+        notes: bookings.notes,
+        createdAt: bookings.createdAt,
+        residentName: users.fullName,
+        residentUsername: users.username,
+        apartmentUnit: apartments.unitNumber,
+      })
+      .from(bookings)
+      .leftJoin(users, eq(bookings.userId, users.id))
+      .leftJoin(apartments, eq(users.id, apartments.ownerId))
+      .orderBy(desc(bookings.createdAt));
+
+    return rows.map((row) => ({
+      id: row.id,
+      serviceType: row.serviceType,
+      slotNumber: row.slotNumber ?? undefined,
+      date: row.date,
+      endDate: row.endDate ?? undefined,
+      startTime: row.startTime,
+      endTime: row.endTime,
+      status: row.status,
+      notes: row.notes ?? undefined,
+      createdAt: row.createdAt,
+      residentName:
+        row.residentName || row.residentUsername || `Resident #${row.id}`,
+      apartmentUnit: row.apartmentUnit || 'N/A',
+    }));
+  }
+
+  async updateStatus(id: number, status: string) {
+    const [updated] = await db
+      .update(bookings)
+      .set({ status })
+      .where(eq(bookings.id, id))
+      .returning();
+
+    if (!updated) {
+      throw new BadRequestException('Booking not found');
+    }
+
+    return this.findOneForManager(updated.id);
+  }
+
+  async updateBooking(id: number, payload: UpdateBookingDto) {
+    const [updated] = await db
+      .update(bookings)
+      .set({
+        notes: payload.notes,
+      })
+      .where(eq(bookings.id, id))
+      .returning();
+
+    if (!updated) {
+      throw new BadRequestException('Booking not found');
+    }
+
+    return this.findOneForManager(updated.id);
+  }
+
+  private async findOneForManager(id: number) {
+    const [row] = await db
+      .select({
+        id: bookings.id,
+        serviceType: bookings.serviceType,
+        slotNumber: bookings.slotNumber,
+        date: bookings.date,
+        endDate: bookings.endDate,
+        startTime: bookings.startTime,
+        endTime: bookings.endTime,
+        status: bookings.status,
+        notes: bookings.notes,
+        createdAt: bookings.createdAt,
+        residentName: users.fullName,
+        residentUsername: users.username,
+        apartmentUnit: apartments.unitNumber,
+      })
+      .from(bookings)
+      .leftJoin(users, eq(bookings.userId, users.id))
+      .leftJoin(apartments, eq(users.id, apartments.ownerId))
+      .where(eq(bookings.id, id))
+      .limit(1);
+
+    if (!row) {
+      throw new BadRequestException('Booking not found');
+    }
+
+    return {
+      id: row.id,
+      serviceType: row.serviceType,
+      slotNumber: row.slotNumber ?? undefined,
+      date: row.date,
+      endDate: row.endDate ?? undefined,
+      startTime: row.startTime,
+      endTime: row.endTime,
+      status: row.status,
+      notes: row.notes ?? undefined,
+      createdAt: row.createdAt,
+      residentName:
+        row.residentName || row.residentUsername || `Resident #${row.id}`,
+      apartmentUnit: row.apartmentUnit || 'N/A',
+    };
   }
 }
