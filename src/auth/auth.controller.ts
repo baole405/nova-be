@@ -1,142 +1,57 @@
 import {
-  Body,
   Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
   Post,
-  Req,
-  Res,
+  Body,
+  Get,
   UseGuards,
-} from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
-import { Response } from 'express';
-import { AuthService } from './auth.service';
-import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
-import { GoogleAuthGuard } from './google-auth.guard';
-import { JwtAuthGuard } from './jwt-auth.guard';
+  Req,
+  HttpStatus,
+} from "@nestjs/common";
+import { AuthService } from "./auth.service";
+import { LoginDto } from "./dto/login.dto";
+import { RegisterDto } from "./dto/register.dto";
+import { JwtAuthGuard } from "./jwt-auth.guard";
+import { GoogleAuthGuard } from "./google-auth.guard";
+import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 
-@ApiTags('Authentication')
-@Controller('auth')
+@ApiTags("Auth")
+@Controller("auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('register')
-  @ApiOperation({ summary: 'Register a new user' })
-  @ApiResponse({
-    status: 201,
-    description: 'User successfully registered',
-    schema: {
-      example: {
-        user: {
-          id: 1,
-          username: 'john_doe',
-          email: 'john.doe@example.com',
-          fullName: 'John Doe',
-          phoneNumber: '+1234567890',
-          role: 'resident',
-          createdAt: '2024-01-01T00:00:00.000Z',
-        },
-        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-      },
-    },
-  })
-  @ApiResponse({ status: 409, description: 'Username or email already exists' })
+  @Post("register")
+  @ApiOperation({ summary: "Register a new user" })
+  @ApiResponse({ status: 201, description: "User successfully registered" })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
-  @Post('login')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login with username/email and password' })
-  @ApiResponse({
-    status: 200,
-    description: 'User successfully logged in',
-    schema: {
-      example: {
-        user: {
-          id: 1,
-          username: 'john_doe',
-          email: 'john.doe@example.com',
-          fullName: 'John Doe',
-          phoneNumber: '+1234567890',
-          role: 'resident',
-          createdAt: '2024-01-01T00:00:00.000Z',
-        },
-        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-      },
-    },
-  })
-  @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  @Post("login")
+  @ApiOperation({ summary: "User login" })
+  @ApiResponse({ status: 200, description: "User successfully logged in" })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 
-  @Get('google')
-  @UseGuards(GoogleAuthGuard)
-  @ApiOperation({ summary: 'Initiate Google OAuth login' })
-  @ApiResponse({
-    status: 302,
-    description: 'Redirects to Google OAuth consent screen',
-  })
-  async googleAuth() {
-    // Guard redirects to Google
-  }
-
-  @Get('me')
+  @Get("me")
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get current user profile' })
-  @ApiResponse({
-    status: 200,
-    description: 'User profile retrieved successfully',
-  })
+  @ApiOperation({ summary: "Get current user profile" })
+  @ApiResponse({ status: 200, description: "Return current user profile" })
   async getProfile(@Req() req: any) {
     return req.user;
   }
 
-  @Get('google/callback')
+  @Get("google")
   @UseGuards(GoogleAuthGuard)
-  @ApiOperation({ summary: 'Google OAuth callback' })
-  @ApiResponse({
-    status: 200,
-    description: 'User successfully authenticated with Google',
-    schema: {
-      example: {
-        user: {
-          id: 1,
-          username: 'john_doe',
-          email: 'john.doe@example.com',
-          fullName: 'John Doe',
-          role: 'resident',
-          createdAt: '2024-01-01T00:00:00.000Z',
-        },
-        access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-      },
-    },
-  })
-  async googleAuthCallback(@Req() req: any, @Res() res: Response) {
-    const googleUser = req.user;
+  @ApiOperation({ summary: "Login with Google" })
+  async googleAuth(@Req() req: any) {
+    // Guards handle redirection to Google
+  }
 
-    const result = await this.authService.googleLogin({
-      googleId: googleUser.googleId,
-      email: googleUser.email,
-      fullName: googleUser.fullName,
-      picture: googleUser.picture,
-    });
-
-    const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5000')
-      .split(',')[0]
-      .trim();
-
-    return res.redirect(
-      `${frontendUrl}/auth/callback?token=${result.access_token}`,
-    );
+  @Get("google/callback")
+  @UseGuards(GoogleAuthGuard)
+  @ApiOperation({ summary: "Google auth callback" })
+  async googleAuthRedirect(@Req() req: any) {
+    return this.authService.googleLogin(req.user);
   }
 }
