@@ -17,4 +17,10 @@ export class ApartmentsController {
   async getMyApartment(@CurrentUser() user: User) {
     return this.apartmentsService.getMyApartment(user);
   }
+
+  @Get()
+  @ApiOperation({ summary: "Get all apartments (for manager)" })
+  async findAll() {
+    return this.apartmentsService.findAll();
+  }
 }

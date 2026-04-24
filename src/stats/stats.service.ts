@@ -6,6 +6,7 @@ import {
   bills,
   transactions,
   users,
+  maintenanceRequests,
 } from "../database/schema";
 
 @Injectable()
@@ -105,7 +106,23 @@ export class StatsService {
       .orderBy(desc(bills.createdAt))
       .limit(5);
 
-    return { recentTransactions, recentBills };
+    const recentFeedbacks = await db
+      .select({
+        id: maintenanceRequests.id,
+        title: maintenanceRequests.title,
+        description: maintenanceRequests.description,
+        status: maintenanceRequests.status,
+        createdAt: maintenanceRequests.createdAt,
+        user: {
+          fullName: users.fullName,
+        },
+      })
+      .from(maintenanceRequests)
+      .leftJoin(users, eq(maintenanceRequests.userId, users.id))
+      .orderBy(desc(maintenanceRequests.createdAt))
+      .limit(3);
+
+    return { recentTransactions, recentBills, recentFeedbacks: recentFeedbacks as any };
   }
 
   private periodToMonths(period?: string): number {
